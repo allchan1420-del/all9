@@ -1,0 +1,314 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>행정안전부 - 민원서비스 검색 및 안내</title>
+    <style>
+        :root {
+            --primary-color: #003366;
+            --secondary-color: #0056b3;
+            --bg-color: #f8f9fa;
+            --border-color: #dee2e6;
+            --text-color: #333333;
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            font-family: 'Pretendard', 'Noto Sans KR', sans-serif;
+        }
+
+        body {
+            background-color: var(--bg-color);
+            color: var(--text-color);
+            line-height: 1.6;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 1100px;
+            margin: 0 auto;
+            background: #ffffff;
+            padding: 30px;
+            border-radius: 8px;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+        }
+
+        header {
+            border-bottom: 3px solid var(--primary-color);
+            padding-bottom: 15px;
+            margin-bottom: 25px;
+        }
+
+        header h1 {
+            color: var(--primary-color);
+            font-size: 24px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        header p {
+            color: #666;
+            font-size: 14px;
+            margin-top: 5px;
+        }
+
+        /* 검색 및 필터 영역 */
+        .filter-card {
+            background-color: #f1f5f9;
+            padding: 20px;
+            border-radius: 6px;
+            margin-bottom: 20px;
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 15px;
+        }
+
+        .filter-group {
+            display: flex;
+            flex-direction: column;
+            gap: 5px;
+        }
+
+        .filter-group label {
+            font-weight: bold;
+            font-size: 14px;
+            color: #444;
+        }
+
+        .filter-group input, 
+        .filter-group select {
+            padding: 10px;
+            border: 1px solid var(--border-color);
+            border-radius: 4px;
+            font-size: 14px;
+            outline: none;
+        }
+
+        .filter-group input:focus, 
+        .filter-group select:focus {
+            border-color: var(--secondary-color);
+        }
+
+        /* 테이블 영역 */
+        .table-wrapper {
+            overflow-x: auto;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 10px;
+            font-size: 14px;
+        }
+
+        th, td {
+            border: 1px solid var(--border-color);
+            padding: 12px 15px;
+            text-align: center;
+        }
+
+        th {
+            background-color: var(--primary-color);
+            color: #ffffff;
+            font-weight: 600;
+        }
+
+        tbody tr:nth-child(even) {
+            background-color: #f9fbfd;
+        }
+
+        tbody tr:hover {
+            background-color: #eef5ff;
+        }
+
+        .badge {
+            display: inline-block;
+            padding: 4px 8px;
+            border-radius: 4px;
+            font-size: 12px;
+            font-weight: bold;
+        }
+
+        .badge-online {
+            background-color: #e3f2fd;
+            color: #0d47a1;
+        }
+
+        .badge-offline {
+            background-color: #ffebee;
+            color: #c62828;
+        }
+
+        .no-result {
+            text-align: center;
+            padding: 40px;
+            color: #777;
+        }
+
+        .result-count {
+            margin-bottom: 10px;
+            font-size: 14px;
+            color: #555;
+        }
+
+        .result-count strong {
+            color: var(--secondary-color);
+        }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <header>
+        <h1>🏛️ 정부24 민원서비스 원스톱 검색</h1>
+        <p>원하시는 민원서비스명, 분야, 온라인 처리 여부 등을 편리하게 검색하세요.</p>
+    </header>
+
+    <div class="filter-card">
+        <div class="filter-group">
+            <label for="searchInput">서비스명/소관기관 검색</label>
+            <input type="text" id="searchInput" placeholder="예: 주민등록, 건축과...">
+        </div>
+        <div class="filter-group">
+            <label for="categoryFilter">민원분야</label>
+            <select id="categoryFilter">
+                <option value="">전체 분야</option>
+            </select>
+        </div>
+        <div class="filter-group">
+            <label for="onlineFilter">온라인 처리 여부</label>
+            <select id="onlineFilter">
+                <option value="">전체</option>
+                <option value="가능">가능</option>
+                <option value="불가">불가</option>
+            </select>
+        </div>
+    </div>
+
+    <div class="result-count">
+        검색 결과: 총 <strong id="count">0</strong>건
+    </div>
+
+    <div class="table-wrapper">
+        <table>
+            <thead>
+                <tr>
+                    <th>ID</th>
+                    <th>민원서비스명</th>
+                    <th>소관기관</th>
+                    <th>민원분야</th>
+                    <th>온라인 처리</th>
+                    <th>처리기한(일)</th>
+                    <th>수수료(원)</th>
+                </tr>
+            </thead>
+            <tbody id="serviceTableBody">
+                </tbody>
+        </table>
+    </div>
+</div>
+
+<script>
+    // 내장 민원서비스 데이터셋
+    const serviceData = [
+        {"서비스ID": "S001", "서비스명": "주민등록등본 발급", "소관기관": "주민센터", "민원분야": "주민등록", "온라인처리": "가능", "처리기한일": 7, "수수료": 500},
+        {"서비스ID": "S002", "서비스명": "전입신고", "소관기관": "복지정책과", "민원분야": "주민등록", "온라인처리": "불가", "처리기한일": 1, "수수료": 0},
+        {"서비스ID": "S003", "서비스명": "인감증명 발급", "소관기관": "복지정책과", "민원분야": "주민등록", "온라인처리": "가능", "처리기한일": 1, "수수료": 0},
+        {"서비스ID": "S004", "서비스명": "주민등록증 재발급", "소관기관": "건축과", "민원분야": "주민등록", "온라인처리": "가능", "처리기한일": 0, "수수료": 0},
+        {"서비스ID": "S005", "서비스명": "건축물대장 발급", "소관기관": "구청 민원봉사과", "민원분야": "건축", "온라인처리": "불가", "처리기한일": 0, "수수료": 1000},
+        {"서비스ID": "S006", "서비스명": "건축허가 신청", "소관기관": "건축과", "민원분야": "건축", "온라인처리": "불가", "처리기한일": 1, "수수료": 2000},
+        {"서비스ID": "S007", "서비스명": "용도변경 신고", "소관기관": "시청 민원과", "민원분야": "건축", "온라인처리": "불가", "처리기한일": 0, "수수료": 0},
+        {"서비스ID": "S008", "서비스명": "지방세 납부확인서", "소관기관": "건축과", "민원분야": "세무", "온라인처리": "가능", "처리기한일": 1, "수수료": 1000},
+        {"서비스ID": "S009", "서비스명": "취득세 신고", "소관기관": "교통행정과", "민원분야": "세무", "온라인처리": "가능", "처리기한일": 0, "수수료": 0},
+        {"서비스ID": "S010", "서비스명": "재산세 조회", "소관기관": "교통행정과", "민원분야": "세무", "온라인처리": "가능", "처리기한일": 3, "수수료": 0},
+        {"서비스ID": "S011", "서비스명": "기초연금 신청", "소관기관": "건축과", "민원분야": "복지", "온라인처리": "가능", "처리기한일": 7, "수수료": 500},
+        {"서비스ID": "S012", "서비스명": "복지급여 조회", "소관기관": "시청 민원과", "민원분야": "복지", "온라인처리": "가능", "처리기한일": 14, "수수료": 5000},
+        {"서비스ID": "S013", "서비스명": "장애인 등록", "소관기관": "주민센터", "민원분야": "복지", "온라인처리": "가능", "처리기한일": 5, "수수료": 0},
+        {"서비스ID": "S014", "서비스명": "자동차 등록", "소관기관": "주민센터", "민원분야": "교통", "온라인처리": "가능", "처리기한일": 1, "수수료": 5000},
+        {"서비스ID": "S015", "서비스명": "운전면허 갱신", "소관기관": "교통행정과", "민원분야": "교통", "온라인처리": "불가", "처리기한일": 1, "수수료": 0},
+        {"서비스ID": "S016", "서비스명": "주정차 위반 조회", "소관기관": "주민센터", "민원분야": "교통", "온라인처리": "가능", "처리기한일": 7, "수수료": 1000}
+    ];
+
+    // DOM 요소 참조
+    const searchInput = document.getElementById('searchInput');
+    const categoryFilter = document.getElementById('categoryFilter');
+    const onlineFilter = document.getElementById('onlineFilter');
+    const serviceTableBody = document.getElementById('serviceTableBody');
+    const countSpan = document.getElementById('count');
+
+    // 카테고리 필터 옵션 동적 생성
+    function initCategoryFilter() {
+        const categories = [...new Set(serviceData.map(item => item.민원분야))];
+        categories.forEach(cat => {
+            const option = document.createElement('option');
+            option.value = cat;
+            option.textContent = cat;
+            categoryFilter.appendChild(option);
+        });
+    }
+
+    // 테이블 데이터 렌더링
+    function renderTable(data) {
+        serviceTableBody.innerHTML = '';
+        countSpan.textContent = data.length;
+
+        if (data.length === 0) {
+            serviceTableBody.innerHTML = `
+                <tr>
+                    <td colspan="7" class="no-result">검색 조건에 일치하는 민원서비스가 없습니다.</td>
+                </tr>
+            `;
+            return;
+        }
+
+        data.forEach(item => {
+            const tr = document.createElement('tr');
+            const onlineBadgeClass = item.온라인처리 === '가능' ? 'badge-online' : 'badge-offline';
+
+            tr.innerHTML = `
+                <td>${item.서비스ID}</td>
+                <td style="text-align: left; font-weight: bold;">${item.서비스명}</td>
+                <td>${item.소관기관}</td>
+                <td>${item.민원분야}</td>
+                <td><span class="badge ${onlineBadgeClass}">${item.온라인처리}</span></td>
+                <td>${item.처리기한일 === 0 ? '즉시' : item.처리기한일 + '일'}</td>
+                <td>${item.수수료.toLocaleString()}원</td>
+            `;
+            serviceTableBody.appendChild(tr);
+        });
+    }
+
+    // 필터링 기능
+    function filterServices() {
+        const searchText = searchInput.value.toLowerCase().trim();
+        const selectedCategory = categoryFilter.value;
+        const selectedOnline = onlineFilter.value;
+
+        const filtered = serviceData.filter(item => {
+            const matchesSearch = item.서비스명.toLowerCase().includes(searchText) || 
+                                  item.소관기관.toLowerCase().includes(searchText);
+            const matchesCategory = selectedCategory === '' || item.민원분야 === selectedCategory;
+            const matchesOnline = selectedOnline === '' || item.온라인처리 === selectedOnline;
+
+            return matchesSearch && matchesCategory && matchesOnline;
+        });
+
+        renderTable(filtered);
+    }
+
+    // 이벤트 리스너 등록
+    searchInput.addEventListener('input', filterServices);
+    categoryFilter.addEventListener('change', filterServices);
+    onlineFilter.addEventListener('change', filterServices);
+
+    // 초기화 실행
+    initCategoryFilter();
+    renderTable(serviceData);
+</script>
+
+</body>
+</html>
